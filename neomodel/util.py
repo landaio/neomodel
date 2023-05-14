@@ -278,7 +278,7 @@ class Database(local, NodeClassRegistry):
         query,
         params=None,
         handle_unique=True,
-        retry_on_session_expire=False,
+        retry_on_session_expire=True,
         resolve_objects=False,
     ):
         """
