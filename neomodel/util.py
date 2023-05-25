@@ -7,8 +7,9 @@ from threading import local
 from urllib.parse import quote, unquote, urlparse
 
 from neo4j import DEFAULT_DATABASE, GraphDatabase, basic_auth
-from neo4j.exceptions import ClientError, SessionExpired
+from neo4j.exceptions import ClientError, SessionExpired, ServiceUnavailable
 from neo4j.graph import Node, Relationship
+from retry import retry
 
 from neomodel import config, core
 from neomodel.exceptions import (
@@ -272,6 +273,7 @@ class Database(local, NodeClassRegistry):
 
         return result_list
 
+    @retry(exceptions=(SessionExpired, ServiceUnavailable), tries=4, delay=0)
     @ensure_connection
     def cypher_query(
         self,
@@ -323,7 +325,7 @@ class Database(local, NodeClassRegistry):
                 raise ConstraintValidationFailed(e.message) from e
             exc_info = sys.exc_info()
             raise exc_info[1].with_traceback(exc_info[2])
-        except SessionExpired:
+        except (SessionExpired, ServiceUnavailable):
             if retry_on_session_expire:
                 self.set_connection(self.url)
                 return self.cypher_query(
